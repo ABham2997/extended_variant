@@ -1,2 +1,2 @@
 # extended_variant
-std::variant based data structure, that allows type-safe implicit conversion to underlying types  
+extended_variant is a data structure for C++17 
