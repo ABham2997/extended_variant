@@ -127,28 +127,38 @@ struct template_can_only_construct{
 template<typename Has, typename T>
 constexpr bool template_can_only_construct_v = template_can_only_construct<Has,T>::value;
 
+template<typename Lam, int=(Lam{}(),0)>
+constexpr bool is_constexpr(Lam) {
+    return true;
+}
+
+constexpr bool is_constexpr(...){
+    return false;
+}
+
 template<size_t N, typename T, typename...Ts>
 struct conv {
     using Next_t = conv<N - 1, T, Ts...>;
 
-    T operator()(const std::variant<Ts...> &var) {
-        Next_t next;
+    constexpr conv() {};
+
+    constexpr T operator()(const std::variant<Ts...> &var) const {
+        constexpr Next_t next;
         using Cur_t = at_index_t<N,Ts...>;
         if constexpr(std::is_constructible_v<T, Cur_t>) {
             if (std::holds_alternative<Cur_t>(var)) {
                 return T(std::get<Cur_t>(var));
-            } else {
-                return next(var);
             }
-        } else {
-            return next(var);
         }
+        return next(var);
     }
 };
 
 template<typename T, typename...Ts>
 struct conv<0, T, Ts...> {
-    T operator()(const std::variant<Ts...> &var) {
+    constexpr conv() {};
+
+    constexpr std::remove_const_t<T> operator()(const std::variant<Ts...> &var) const {
         using Cur_t = at_index_t<0,Ts...>;
         if constexpr(std::is_constructible_v<T, Cur_t>) {
             if (std::holds_alternative<Cur_t>(var)) {
@@ -157,9 +167,9 @@ struct conv<0, T, Ts...> {
         }
         if constexpr(std::is_default_constructible_v<T>) {
             return T{};
-        }
-        throw std::bad_variant_access();
+        } else static_assert(std::is_default_constructible_v<T>, "convertable must have default constructor");
     }
+
 };
 
 }
@@ -171,17 +181,19 @@ class extended_variant {
         Data_t data;
 
     public:
+        constexpr static int npos = -1;
+
         template<typename=std::enable_if_t<std::is_default_constructible_v<Data_t>>>
-        extended_variant() : data{} {};
+        constexpr extended_variant() : data{} {};
 
-        extended_variant(const Data_t& val) : data{val} {};
+        constexpr extended_variant(const Data_t& val) : data{val} {};
 
-        extended_variant(const extended_variant &other) : data{other.data}{};
+        constexpr extended_variant(const extended_variant &other) : data{other.data}{};
 
-        extended_variant(extended_variant &&other) noexcept : data{std::move(other.data)}{};
+        constexpr extended_variant(extended_variant &&other) noexcept : data{std::move(other.data)}{};
 
         template<typename T, typename=std::enable_if_t<std::is_constructible_v<Data_t,T>>>
-        extended_variant(T &&val) : data{std::forward<T>(val)} {};
+        constexpr extended_variant(T &&val) : data{std::forward<T>(val)} {};
 
         extended_variant &operator=(const extended_variant &other) = default;
 
@@ -200,8 +212,8 @@ class extended_variant {
 
         template<typename T, typename=std::enable_if_t<impl::template_has_or_can_construct_v<T, Data_t>>,
                 typename CT=impl::conv<sizeof...(Ts)-1, T, Ts...>>
-        operator T() const {
-            CT converter;
+        constexpr operator T() const {
+            constexpr CT converter;
             if constexpr(impl::template_has_v<T,Data_t>){
                 if (std::holds_alternative<T>(data)){
                     return std::get<T>(data);
@@ -211,47 +223,75 @@ class extended_variant {
         }
 
         template<typename T>
-        bool holds() const {
+        constexpr bool holds() const {
             if constexpr(!impl::template_has_v<T, Data_t>){
                 return false;
             } else return std::holds_alternative<T>(data);
         }
 
-        Data_t get_variant() const {
+        template<typename F, typename RT=decltype(std::visit(std::declval<F>(),data))>
+        constexpr RT visit(F &&functor) const {
+            return std::visit(std::forward<F>(functor), data);
+        }
+
+        constexpr size_t index() const noexcept {
+            return data.index();
+        }
+
+        void swap(extended_variant& other) noexcept {
+            data.swap(other.data);
+        }
+
+        constexpr Data_t get_variant() const {
             return data;
         }
 
+        extended_variant set_variant(Data_t var){
+            data = std::move(var);
+            return *this;
+        }
+
         template<typename T, typename=std::enable_if_t<impl::template_has_v<T,Data_t>>>
-        T get() const {
+        constexpr decltype(auto) get_if() const {
+            return std::get_if<T>(&data);
+        }
+
+        template<size_t N, typename=std::enable_if_t< 0<N && N<sizeof...(Ts)-1 >>
+        constexpr decltype(auto) get_if() const {
+            return std::get_if<N>(&data);
+        };
+
+        template<typename T, typename=std::enable_if_t<impl::template_has_v<T,Data_t>>>
+        constexpr decltype(auto) get() const {
             return std::get<T>(data);
         }
 
         template<size_t N, typename=std::enable_if_t< 0<N && N<sizeof...(Ts)-1 >>
-        decltype(auto) get() const {
+        constexpr decltype(auto) get() const {
             return std::get<N>(data);
         };
 
-        bool operator==(const extended_variant& other){
+        constexpr bool operator==(const extended_variant& other) const {
             return data == other.data;
         }
 
-        bool operator!=(const extended_variant& other){
+        constexpr bool operator!=(const extended_variant& other) const {
             return data != other.data;
         }
 
-        bool operator<(const extended_variant& other){
+        constexpr bool operator<(const extended_variant& other) const {
             return data < other.data;
         }
 
-        bool operator>(const extended_variant& other){
+        constexpr bool operator>(const extended_variant& other) const {
             return data > other.data;
         }
 
-        bool operator<=(const extended_variant& other){
+        constexpr bool operator<=(const extended_variant& other) const {
             return data <= other.data;
         }
 
-        bool operator>=(const extended_variant& other){
+        constexpr bool operator>=(const extended_variant& other) const {
             return data >= other.data;
         }
 
@@ -266,3 +306,64 @@ class extended_variant {
         }
 
 };
+
+namespace std{
+
+template<typename...Ts>
+struct hash<extended_variant<Ts...>> {
+    size_t operator()(const extended_variant<Ts...>& ev){
+        return ev.get_variant();
+    }
+};
+
+template<typename...Ts>
+void swap(extended_variant<Ts...>& lhs, extended_variant<Ts...>& rhs) noexcept {
+    lhs.swap(rhs);
+}
+
+template<typename Visitor, typename...Ts>
+constexpr decltype(auto) visit(Visitor&& vis, extended_variant<Ts...> var){
+    return std::visit(std::forward<Visitor>(vis), var.get_variant());
+}
+
+template<size_t N, typename...Ts>
+constexpr decltype(auto) get(const extended_variant<Ts...>& ev) noexcept {
+    return ev.template get<N>();
+}
+
+template<typename T, typename...Ts>
+constexpr decltype(auto) get(const extended_variant<Ts...>& ev) noexcept {
+    return ev.template get<T>();
+}
+
+template<typename T, typename...Ts>
+constexpr T* get_if(const extended_variant<Ts...>& ev) noexcept {
+    return ev.template get_if<T>();
+}
+
+template<size_t N, typename...Ts>
+constexpr decltype(auto) get_if(const extended_variant<Ts...>& ev) noexcept {
+    return ev.template get_if<N>();
+}
+
+template<typename T, typename...Ts>
+constexpr bool holds_alternative(const extended_variant<Ts...>& ev) noexcept {
+    return ev.template holds<T>();
+}
+
+template<typename T, typename A>
+class vector;
+
+template<typename T, size_t N>
+class array;
+
+}
+
+template<typename...Ts>
+using hvector = std::vector<extended_variant<Ts...>>;
+
+template<size_t N, typename...Ts>
+using harray = std::array<extended_variant<Ts...>, N>;
+
+template<typename...Ts>
+using evariant = extended_variant<Ts...>;
