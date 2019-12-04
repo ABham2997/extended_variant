@@ -94,6 +94,17 @@ int main(){
     }
     test_passed();
 
+    testing("comparison operators");
+    {
+        using EV = extended_variant<int, double, std::string>;
+        EV a{5};
+        EV b{5};
+        assert(a==b);
+        EV c{2.5};
+        assert(a>2);
+    }
+    test_passed();
+
     testing("ostreaming");
     {
         ev = "ostream test";

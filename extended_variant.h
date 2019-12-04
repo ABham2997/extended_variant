@@ -217,11 +217,7 @@ class extended_variant {
             } else return std::holds_alternative<T>(data);
         }
 
-        const Data_t& get() const {
-            return data;
-        }
-
-        Data_t& get() {
+        Data_t get_variant() const {
             return data;
         }
 
@@ -234,6 +230,30 @@ class extended_variant {
         decltype(auto) get() const {
             return std::get<N>(data);
         };
+
+        bool operator==(const extended_variant& other){
+            return data == other.data;
+        }
+
+        bool operator!=(const extended_variant& other){
+            return data != other.data;
+        }
+
+        bool operator<(const extended_variant& other){
+            return data < other.data;
+        }
+
+        bool operator>(const extended_variant& other){
+            return data > other.data;
+        }
+
+        bool operator<=(const extended_variant& other){
+            return data <= other.data;
+        }
+
+        bool operator>=(const extended_variant& other){
+            return data >= other.data;
+        }
 
         friend std::ostream &operator<<(std::ostream &os, const extended_variant& self){
             std::visit([&](auto &&arg){ os << arg; }, self.data);
