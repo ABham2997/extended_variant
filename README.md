@@ -91,11 +91,11 @@ Like std::variants, extended_variants have compile-time support:
 
 #include "extended_variant"
 
-constexpr evariant<int, double, std::string_view> var = "compile-time string";
+constexpr evariant<int, double, std::string_view> var1 = "compile-time string";
 
-constexpr std::string_view sv = var; //OK, sv holds "compile-time string"
+constexpr std::string_view sv = var1; //OK, sv holds "compile-time string"
 
-var = 123.456;
+constexpr evariant<int, double, std::string_view> var2 = 123.456;
 
 constexpr int i = var;
 
