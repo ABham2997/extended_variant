@@ -29,11 +29,15 @@ extended_variant<std::string, int, double> var = 25; //initialise variant with i
 int intData = var; //OK, implicit conversion to int
 std::cout << intData << '\n'; //prints 25
 
-double doubleData = var; //Also OK, implicit conversion to double
+double doubleData = var; //Also OK, implicit conversion to int then to double
 std::cout << doubleData << '\n'; //prints 25
 
-float floatData = var; //Also OK, implicit conversion to float
+float floatData = var; //Also OK, implicit conversion to int then to float
 std::cout << floatData << '\n'; //prints 25
+
+var = 1234.567; //assign double to variant
+
+doubleData = var; //OK, implicit conversion directly to double
 
 std::string stringData = var; //OK, but since std::strings can't be constructed from ints, stringData is default constructed
 
