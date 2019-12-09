@@ -1,13 +1,3 @@
-/*=========================================================================
-
-    Author:     Nova Systems UK
-    Date:       03/12/2019
-    Program:    Phoenix Paraview project
-    Module:     unittests.cpp
-    
-    Copyright (c) 2019 Nova Systems UK. All rights reserved.
-
-=========================================================================*/
 #include<string>
 #include<cassert>
 #include<iostream>
